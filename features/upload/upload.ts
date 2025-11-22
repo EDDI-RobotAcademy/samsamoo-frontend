@@ -19,8 +19,9 @@ export function useUpload() {
 
             if (!res.ok) throw new Error(data.error || "업로드 실패");
             setDocument(data);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "업로드 중 오류가 발생했습니다.";
+            setError(message);
         } finally {
             setLoading(false);
         }

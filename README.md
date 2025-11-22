@@ -2,17 +2,19 @@
 samsamoo-frontend
 
 ## .env.local setting (The top-level package)
+`````
 NEXT_PUBLIC_API_BASE_URL=http://localhost:33333
 NEXT_PUBLIC_GOOGLE_LOGIN_PATH=/authentication/google
 AWS_REGION=ap-northeast-2
 AWS_ACCESS_KEY_ID=yourAccessKeyId
 AWS_SECRET_ACCESS_KEY=yourSecretAccessKey
 AWS_S3_BUCKET=yourBucketName
-
+`````
 # setting install
+`````
 npm install
 npm install aws-sdk
-
+`````
 ## if you message UnauthorizedAccess
  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
