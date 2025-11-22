@@ -1,1 +1,2 @@
-# SamSamOO-Frontend
+# samsamoo-frontend
+samsamoo-frontend
