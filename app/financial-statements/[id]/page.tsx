@@ -1,0 +1,332 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import Link from "next/link";
+import { FinancialStatement, FinancialRatio, AnalysisReport } from "@/types/financial-statement";
+import FinancialPipeline from "@/components/FinancialPipeline";
+
+export default function FinancialStatementDetail() {
+    const params = useParams();
+    const router = useRouter();
+    const { isLoggedIn } = useAuth();
+    const statementId = params.id as string;
+
+    const [statement, setStatement] = useState<FinancialStatement | null>(null);
+    const [ratios, setRatios] = useState<FinancialRatio[]>([]);
+    const [report, setReport] = useState<AnalysisReport | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (isLoggedIn && statementId) {
+            loadStatement();
+        }
+    }, [isLoggedIn, statementId]);
+
+    const loadStatement = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}`,
+                { credentials: "include" }
+            );
+            if (!res.ok) throw new Error("Failed to load statement");
+
+            const data = await res.json();
+            setStatement(data);
+
+            // If ratios calculated or analysis complete, load ratios and report
+            if (data.status === "ratios_calculated" || data.status === "analysis_complete") {
+                loadRatios();
+            }
+            if (data.status === "analysis_complete") {
+                loadReport();
+            }
+        } catch (err) {
+            console.error("Error loading statement:", err);
+            setError("재무제표를 불러올 수 없습니다.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadRatios = async () => {
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}/ratios`,
+                { credentials: "include" }
+            );
+            if (res.ok) {
+                const data = await res.json();
+                setRatios(data.ratios || []);
+            }
+        } catch (err) {
+            console.error("Error loading ratios:", err);
+        }
+    };
+
+    const loadReport = async () => {
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}/report`,
+                { credentials: "include" }
+            );
+            if (res.ok) {
+                const data = await res.json();
+                setReport(data.report || null);
+            }
+        } catch (err) {
+            console.error("Error loading report:", err);
+        }
+    };
+
+    const handleRunAnalysis = async () => {
+        if (!confirm("분석을 시작하시겠습니까? (Stage 2-4 실행)")) return;
+
+        setAnalyzing(true);
+        setError("");
+
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/analyze/${statementId}`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                }
+            );
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.detail || "분석 실패");
+            }
+
+            alert("분석이 완료되었습니다!");
+            loadStatement(); // Reload to get updated status
+        } catch (err: any) {
+            console.error("Analysis error:", err);
+            setError(err.message || "분석 중 오류가 발생했습니다.");
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
+    const handleDownloadReport = async () => {
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}/report/download`,
+                { credentials: "include" }
+            );
+            if (!res.ok) throw new Error("다운로드 실패");
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `financial_report_${statementId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error("Download error:", err);
+            alert("다운로드 중 오류가 발생했습니다.");
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm("정말로 이 재무제표를 삭제하시겠습니까?")) return;
+
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}`,
+                {
+                    method: "DELETE",
+                    credentials: "include",
+                }
+            );
+            if (!res.ok) throw new Error("삭제 실패");
+
+            alert("재무제표가 삭제되었습니다.");
+            router.push("/financial-statements/list");
+        } catch (err) {
+            console.error("Delete error:", err);
+            alert("삭제 중 오류가 발생했습니다.");
+        }
+    };
+
+    const groupRatiosByCategory = (ratios: FinancialRatio[]) => {
+        const grouped: Record<string, FinancialRatio[]> = {};
+        ratios.forEach((ratio) => {
+            if (!grouped[ratio.category]) {
+                grouped[ratio.category] = [];
+            }
+            grouped[ratio.category].push(ratio);
+        });
+        return grouped;
+    };
+
+    if (!isLoggedIn) {
+        return (
+            <div className="p-6 min-h-screen bg-white text-black">
+                <h1 className="text-2xl font-bold mb-4">재무제표 상세</h1>
+                <p>로그인이 필요한 서비스입니다.</p>
+                <Link href="/login" className="text-blue-500 hover:underline">
+                    로그인하러 가기
+                </Link>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="p-6 min-h-screen bg-white text-black">
+                <p>로딩 중...</p>
+            </div>
+        );
+    }
+
+    if (error && !statement) {
+        return (
+            <div className="p-6 min-h-screen bg-white text-black">
+                <h1 className="text-2xl font-bold mb-4">재무제표 상세</h1>
+                <p className="text-red-500">{error}</p>
+                <Link href="/financial-statements/list" className="text-blue-500 hover:underline mt-4 block">
+                    목록으로 돌아가기
+                </Link>
+            </div>
+        );
+    }
+
+    if (!statement) {
+        return (
+            <div className="p-6 min-h-screen bg-white text-black">
+                <p>재무제표를 찾을 수 없습니다.</p>
+            </div>
+        );
+    }
+
+    const groupedRatios = groupRatiosByCategory(ratios);
+
+    return (
+        <div className="p-6 min-h-screen bg-white text-black">
+            <h1 className="text-2xl font-bold mb-4">재무제표 상세</h1>
+
+            {/* Statement Info */}
+            <div className="bg-gray-100 p-4 rounded mb-6">
+                <h2 className="font-bold text-lg mb-2">{statement.company_name}</h2>
+                <p><strong>유형:</strong> {statement.statement_type === "quarterly" ? "분기" : "연간"}</p>
+                <p><strong>회계연도:</strong> {statement.fiscal_year}</p>
+                {statement.fiscal_quarter && (
+                    <p><strong>분기:</strong> {statement.fiscal_quarter}분기</p>
+                )}
+                <p><strong>생성일:</strong> {new Date(statement.created_at).toLocaleString()}</p>
+            </div>
+
+            {/* Pipeline Visualizer */}
+            <FinancialPipeline status={statement.status} />
+
+            {/* Action Buttons */}
+            <div className="my-6 space-x-2">
+                {statement.status === "metadata_only" && (
+                    <Link
+                        href={`/financial-statements/${statementId}/upload`}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                        PDF 업로드 (Stage 1)
+                    </Link>
+                )}
+                {statement.status === "pdf_uploaded" && (
+                    <button
+                        onClick={handleRunAnalysis}
+                        disabled={analyzing}
+                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400"
+                    >
+                        {analyzing ? "분석 중..." : "분석 실행 (Stage 2-4)"}
+                    </button>
+                )}
+                {statement.status === "analysis_complete" && (
+                    <button
+                        onClick={handleDownloadReport}
+                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                    >
+                        PDF 리포트 다운로드
+                    </button>
+                )}
+                <button
+                    onClick={handleDelete}
+                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                >
+                    삭제
+                </button>
+            </div>
+
+            {error && <p className="text-red-500 mb-4">{error}</p>}
+
+            {/* Ratios Display */}
+            {ratios.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold mb-4">📊 계산된 재무 비율</h2>
+                    {Object.entries(groupedRatios).map(([category, categoryRatios]) => (
+                        <div key={category} className="mb-4">
+                            <h3 className="font-semibold text-lg mb-2 text-blue-600">{category}</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {categoryRatios.map((ratio) => (
+                                    <div key={ratio.id} className="bg-gray-50 p-3 rounded border">
+                                        <p className="font-medium">{ratio.ratio_name}</p>
+                                        <p className="text-2xl font-bold text-green-600">{ratio.value.toFixed(2)}</p>
+                                        {ratio.description && (
+                                            <p className="text-sm text-gray-600 mt-1">{ratio.description}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Analysis Report */}
+            {report && (
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold mb-4">📝 분석 리포트</h2>
+                    <div className="bg-blue-50 p-4 rounded">
+                        <h3 className="font-semibold mb-2">요약</h3>
+                        <p className="text-gray-700 mb-4">{report.summary}</p>
+
+                        {report.insights && report.insights.length > 0 && (
+                            <>
+                                <h3 className="font-semibold mb-2">주요 인사이트</h3>
+                                <ul className="list-disc list-inside mb-4">
+                                    {report.insights.map((insight, idx) => (
+                                        <li key={idx} className="text-gray-700">{insight}</li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+
+                        {report.recommendations && report.recommendations.length > 0 && (
+                            <>
+                                <h3 className="font-semibold mb-2">권장사항</h3>
+                                <ul className="list-disc list-inside">
+                                    {report.recommendations.map((rec, idx) => (
+                                        <li key={idx} className="text-gray-700">{rec}</li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Navigation */}
+            <div className="mt-8 space-x-2">
+                <Link href="/financial-statements/list" className="text-blue-500 hover:underline">
+                    목록으로 돌아가기
+                </Link>
+            </div>
+        </div>
+    );
+}
