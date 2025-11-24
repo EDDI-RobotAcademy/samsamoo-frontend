@@ -13,21 +13,19 @@ export interface FinancialStatement {
 
 export interface FinancialRatio {
     id: number;
-    statement_id: number;
-    category: string;
-    ratio_name: string;
-    value: number;
-    description?: string;
-    created_at: string;
+    ratio_type: string;
+    ratio_value: string; // Formatted as percentage string (e.g., "15.5%")
+    calculated_at: string;
 }
 
 export interface AnalysisReport {
     id: number;
     statement_id: number;
-    summary: string;
-    insights: string[];
-    recommendations: string[];
-    report_s3_key: string;
+    kpi_summary: string | null;
+    statement_table_summary: Record<string, any> | null;
+    ratio_analysis: string | null;
+    report_s3_key: string | null;
+    is_complete: boolean;
     created_at: string;
 }
 

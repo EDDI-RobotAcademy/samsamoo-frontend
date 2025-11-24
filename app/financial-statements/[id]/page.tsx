@@ -157,15 +157,21 @@ export default function FinancialStatementDetail() {
         }
     };
 
-    const groupRatiosByCategory = (ratios: FinancialRatio[]) => {
-        const grouped: Record<string, FinancialRatio[]> = {};
-        ratios.forEach((ratio) => {
-            if (!grouped[ratio.category]) {
-                grouped[ratio.category] = [];
-            }
-            grouped[ratio.category].push(ratio);
-        });
-        return grouped;
+    // Map ratio types to user-friendly names
+    const getRatioDisplayName = (ratioType: string): string => {
+        const nameMap: Record<string, string> = {
+            'ROA': 'Return on Assets (ROA)',
+            'ROE': 'Return on Equity (ROE)',
+            'ROI': 'Return on Investment (ROI)',
+            'DEBT_RATIO': 'Debt Ratio',
+            'CURRENT_RATIO': 'Current Ratio',
+            'QUICK_RATIO': 'Quick Ratio',
+            'PROFIT_MARGIN': 'Profit Margin',
+            'OPERATING_MARGIN': 'Operating Margin',
+            'ASSET_TURNOVER': 'Asset Turnover',
+            'EQUITY_MULTIPLIER': 'Equity Multiplier'
+        };
+        return nameMap[ratioType] || ratioType;
     };
 
     if (!isLoggedIn) {
@@ -207,8 +213,6 @@ export default function FinancialStatementDetail() {
             </div>
         );
     }
-
-    const groupedRatios = groupRatiosByCategory(ratios);
 
     return (
         <div className="p-6 min-h-screen bg-white text-black">
@@ -269,22 +273,17 @@ export default function FinancialStatementDetail() {
             {ratios.length > 0 && (
                 <div className="mb-6">
                     <h2 className="text-xl font-bold mb-4">📊 계산된 재무 비율</h2>
-                    {Object.entries(groupedRatios).map(([category, categoryRatios]) => (
-                        <div key={category} className="mb-4">
-                            <h3 className="font-semibold text-lg mb-2 text-blue-600">{category}</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {categoryRatios.map((ratio) => (
-                                    <div key={ratio.id} className="bg-gray-50 p-3 rounded border">
-                                        <p className="font-medium">{ratio.ratio_name}</p>
-                                        <p className="text-2xl font-bold text-green-600">{ratio.value.toFixed(2)}</p>
-                                        {ratio.description && (
-                                            <p className="text-sm text-gray-600 mt-1">{ratio.description}</p>
-                                        )}
-                                    </div>
-                                ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {ratios.map((ratio) => (
+                            <div key={ratio.id} className="bg-gray-50 p-4 rounded border hover:shadow-md transition-shadow">
+                                <p className="font-medium text-gray-700 mb-2">{getRatioDisplayName(ratio.ratio_type)}</p>
+                                <p className="text-3xl font-bold text-green-600">{ratio.ratio_value}</p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {new Date(ratio.calculated_at).toLocaleDateString()}
+                                </p>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -292,30 +291,32 @@ export default function FinancialStatementDetail() {
             {report && (
                 <div className="mb-6">
                     <h2 className="text-xl font-bold mb-4">📝 분석 리포트</h2>
-                    <div className="bg-blue-50 p-4 rounded">
-                        <h3 className="font-semibold mb-2">요약</h3>
-                        <p className="text-gray-700 mb-4">{report.summary}</p>
-
-                        {report.insights && report.insights.length > 0 && (
-                            <>
-                                <h3 className="font-semibold mb-2">주요 인사이트</h3>
-                                <ul className="list-disc list-inside mb-4">
-                                    {report.insights.map((insight, idx) => (
-                                        <li key={idx} className="text-gray-700">{insight}</li>
-                                    ))}
-                                </ul>
-                            </>
+                    <div className="bg-blue-50 p-4 rounded space-y-4">
+                        {report.kpi_summary && (
+                            <div>
+                                <h3 className="font-semibold mb-2">KPI 요약</h3>
+                                <p className="text-gray-700 whitespace-pre-wrap">{report.kpi_summary}</p>
+                            </div>
                         )}
 
-                        {report.recommendations && report.recommendations.length > 0 && (
-                            <>
-                                <h3 className="font-semibold mb-2">권장사항</h3>
-                                <ul className="list-disc list-inside">
-                                    {report.recommendations.map((rec, idx) => (
-                                        <li key={idx} className="text-gray-700">{rec}</li>
-                                    ))}
-                                </ul>
-                            </>
+                        {report.statement_table_summary && (
+                            <div>
+                                <h3 className="font-semibold mb-2">재무제표 요약</h3>
+                                <pre className="text-gray-700 text-sm overflow-x-auto bg-white p-3 rounded">
+                                    {JSON.stringify(report.statement_table_summary, null, 2)}
+                                </pre>
+                            </div>
+                        )}
+
+                        {report.ratio_analysis && (
+                            <div>
+                                <h3 className="font-semibold mb-2">비율 분석</h3>
+                                <p className="text-gray-700 whitespace-pre-wrap">{report.ratio_analysis}</p>
+                            </div>
+                        )}
+
+                        {!report.kpi_summary && !report.statement_table_summary && !report.ratio_analysis && (
+                            <p className="text-gray-500">분석 결과가 아직 생성되지 않았습니다.</p>
                         )}
                     </div>
                 </div>
