@@ -21,11 +21,19 @@ export default function Navbar() {
 
             <div className="space-x-4">
                 <Link href="/">Home</Link>
-                <Link href="/documents/list">문서 분석</Link>
-                <Link href="/contact">Contact</Link>
 
-                {/* 게시판 메뉴 추가 */}
-                <Link href="/board/list">게시판</Link>
+                {/* 공개 메뉴 */}
+                <Link href="/anonymous-board/list">익명 게시판</Link>
+
+                {/* 인증 필요한 메뉴 */}
+                {isLoggedIn && (
+                    <>
+                        <Link href="/board/list">게시판</Link>
+                        <Link href="/board/me">내 게시글</Link>
+                        <Link href="/documents/list">문서 분석</Link>
+                        <Link href="/financial-statements/list">재무제표 분석</Link>
+                    </>
+                )}
 
                 {isLoggedIn ? (
                     <button
