@@ -9,7 +9,7 @@ export default function FinancialStatementList() {
     const { isLoggedIn } = useAuth();
     const [statements, setStatements] = useState<FinancialStatement[]>([]);
     const [page, setPage] = useState(1);
-    const [size] = useState(10);
+    const size = 10;
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
 
@@ -21,17 +21,14 @@ export default function FinancialStatementList() {
                 { credentials: "include" }
             );
             if (!res.ok) {
-                console.error("Failed to fetch financial statements", res.status);
                 setStatements([]);
                 setTotal(0);
                 return;
             }
             const data: PaginatedStatements = await res.json();
-            console.log("Fetched financial statements:", data);
             setStatements(data.items);
             setTotal(data.total);
-        } catch (err) {
-            console.error("Error loading financial statements:", err);
+        } catch {
             setStatements([]);
             setTotal(0);
         } finally {
@@ -62,8 +59,7 @@ export default function FinancialStatementList() {
             }
             alert("재무제표가 삭제되었습니다.");
             loadStatements(page);
-        } catch (err) {
-            console.error("Delete error:", err);
+        } catch {
             alert("삭제 중 오류가 발생했습니다.");
         }
     };

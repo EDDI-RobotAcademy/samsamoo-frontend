@@ -45,11 +45,10 @@ export default function CreateAnonymousBoard() {
                 return;
             }
 
-            const data = await res.json();
+            await res.json();
             alert("게시글이 작성되었습니다!");
             router.push("/anonymous-board/list");
-        } catch (err) {
-            console.error("Create error:", err);
+        } catch {
             alert("작성 중 오류가 발생했습니다.");
         } finally {
             setLoading(false);

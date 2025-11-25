@@ -32,8 +32,7 @@ export default function AnonymousBoardDetail() {
             }
             const data = await res.json();
             setBoard(data);
-        } catch (err) {
-            console.error("Error loading board:", err);
+        } catch {
             setError("게시글을 불러올 수 없습니다.");
         } finally {
             setLoading(false);
@@ -57,8 +56,7 @@ export default function AnonymousBoardDetail() {
             }
             alert("게시글이 삭제되었습니다.");
             router.push("/anonymous-board/list");
-        } catch (err) {
-            console.error("Delete error:", err);
+        } catch {
             alert("삭제 중 오류가 발생했습니다.");
         }
     };
