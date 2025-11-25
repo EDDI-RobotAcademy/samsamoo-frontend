@@ -34,8 +34,9 @@ export default function BoardUpdate() {
                 setBoard(data);
                 setTitle(data.title || "");
                 setContent(data.content || "");
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Error occurred";
+                setError(message);
             } finally {
                 setLoading(false);
             }
@@ -63,9 +64,9 @@ export default function BoardUpdate() {
             }
 
             router.push(`/board/${id}`);
-        } catch (err: any) {
-            console.error(err);
-            alert("수정에 실패했습니다: " + err.message);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            alert("수정에 실패했습니다: " + message);
         }
     };
 
