@@ -36,8 +36,7 @@ export default function UploadFinancialStatementPDF() {
             }
             const data = await res.json();
             setStatement(data);
-        } catch (err) {
-            console.error("Error loading statement:", err);
+        } catch {
             setError("재무제표를 불러올 수 없습니다.");
         } finally {
             setLoading(false);
@@ -77,9 +76,9 @@ export default function UploadFinancialStatementPDF() {
 
             // Redirect to statement detail page
             router.push(`/financial-statements/${statementId}`);
-        } catch (err: any) {
-            console.error("Upload error:", err);
-            setError(err.message || "업로드 중 오류가 발생했습니다.");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "업로드 중 오류가 발생했습니다.";
+            setError(message);
         } finally {
             setUploading(false);
         }

@@ -25,15 +25,12 @@ export default function MyBoards() {
                 { credentials: "include" }
             );
             if (!res.ok) {
-                console.error("Failed to fetch my boards", res.status);
                 setBoards([]);
                 return;
             }
             const data = await res.json();
-            console.log("Fetched my boards:", data);
             setBoards(data.boards || data);
-        } catch (err) {
-            console.error("Error loading my boards:", err);
+        } catch {
             setBoards([]);
         } finally {
             setLoading(false);
@@ -63,8 +60,7 @@ export default function MyBoards() {
             }
             alert("게시글이 삭제되었습니다.");
             loadMyBoards();
-        } catch (err) {
-            console.error("Delete error:", err);
+        } catch {
             alert("삭제 중 오류가 발생했습니다.");
         }
     };

@@ -14,7 +14,7 @@ interface Board {
 export default function BoardList() {
     const [boards, setBoards] = useState<Board[]>([]);
     const [page, setPage] = useState(1);
-    const [size] = useState(10);
+    const size = 10;
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
 
@@ -26,17 +26,14 @@ export default function BoardList() {
                 { credentials: "include" }
             );
             if (!res.ok) {
-                console.error("Failed to fetch boards", res.status);
                 setBoards([]);
                 setTotal(0);
                 return;
             }
             const data = await res.json();
-            console.log("Fetched board list:", data); // 디버깅용
             setBoards(data.boards);
             setTotal(data.total);
-        } catch (err) {
-            console.error("Error loading boards:", err);
+        } catch {
             setBoards([]);
             setTotal(0);
         } finally {

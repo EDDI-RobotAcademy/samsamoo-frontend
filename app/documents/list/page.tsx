@@ -38,15 +38,22 @@ export default function DocumentListPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || "문서 목록 불러오기 실패");
             setDocuments(data);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : "문서 목록 불러오기 실패";
+            setError(message);
         } finally {
             setLoading(false);
         }
     };
 
+    const getS3Url = (s3Key: string) => {
+        const bucket = process.env.NEXT_PUBLIC_AWS_S3_BUCKET || "s3-jaeyeong-lsh-bucket";
+        const region = process.env.NEXT_PUBLIC_AWS_REGION || "ap-northeast-2";
+        return `https://${bucket}.s3.${region}.amazonaws.com/${s3Key}`;
+    };
+
     const handleAnalyze = async (doc: DocumentMeta) => {
-        const s3Url = `https://s3-eddi-pjs-bucket.s3.ap-northeast-2.amazonaws.com/${doc.s3_key}`;
+        const s3Url = getS3Url(doc.s3_key);
         setAnalyzingId(doc.id);
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/documents-multi-agents/analyze`, {
@@ -67,8 +74,9 @@ export default function DocumentListPage() {
                 ...prev,
                 [doc.id]: data,
             }));
-        } catch (e: any) {
-            alert(`분석 실패: ${e.message}`);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : "알 수 없는 오류";
+            alert(`분석 실패: ${message}`);
         } finally {
             setAnalyzingId(null);
         }
@@ -96,7 +104,7 @@ export default function DocumentListPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {documents.map((doc) => {
-                    const s3Url = `https://s3-eddi-pjs-bucket.s3.ap-northeast-2.amazonaws.com/${doc.s3_key}`;
+                    const s3Url = getS3Url(doc.s3_key);
                     const result = analyzeResults[doc.id];
                     const isAnalyzing = analyzingId === doc.id;
 
