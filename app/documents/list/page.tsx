@@ -35,6 +35,10 @@ interface DocumentSearchResponse {
     detail?: string;
 }
 
+// 환경 변수 설정
+// 환경 변수가 없을 경우에 대비해 S3 URL을 임시로 하드코딩된 값으로 대체 (실제 환경에서는 NEXT_PUBLIC_S3_BASE_URL 사용 권장)
+const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL || "https://s3-eddi-pjs-bucket.s3.ap-northeast-2.amazonaws.com";
+
 
 export default function DocumentListPage() {
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
@@ -52,21 +56,9 @@ export default function DocumentListPage() {
   const [size, setSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0); 
   const [hasNext, setHasNext] = useState(false);
-  
-  // 💡 렌더링 디버깅용 로그
-  console.log(`[RENDER] Page: ${page}, FileName: ${searchFileName}, Docs: ${documents.length}, TotalCount: ${totalCount}, Loading: ${loading}`);
-
-  const handleAnalyze = async (doc: DocumentMeta) => {
-    // ... (분석 로직 생략)
-  };
-
-  const handleDelete = async (docId: number, fileName: string) => {
-    // ... (삭제 로직 생략)
-  };
 
   // /documents/list 엔드포인트 처리 (전체 리스트 반환 가정)
   const fetchAllDocuments = useCallback(async (currentPage: number, currentSize: number) => { 
-    console.log("[DEBUG] Attempting to fetch ALL documents...");
     setLoading(true);
     setError("");
     try {
@@ -80,9 +72,6 @@ export default function DocumentListPage() {
       }
       
       const listData: DocumentMeta[] = await res.json(); 
-      
-      console.log(`[API SUCCESS] fetchAllDocuments Data Length: ${listData?.length}`); 
-
       setDocuments(listData || []); 
       setTotalCount(listData.length || 0); 
       setHasNext(false); 
@@ -90,7 +79,6 @@ export default function DocumentListPage() {
     } catch (e: any) {
       setError(e.message);
       setDocuments([]);
-      console.error("[API ERROR] fetchAllDocuments failed:", e);
     } finally {
       setLoading(false);
     }
@@ -112,8 +100,6 @@ export default function DocumentListPage() {
         size: currentSize,
       };
 
-      console.log("[API REQUEST] Sending Search Query:", payload); // 💡 요청 로그 추가
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/documents/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,17 +109,10 @@ export default function DocumentListPage() {
       const data: DocumentSearchResponse = await res.json(); 
       if (!res.ok) throw new Error(data.detail || "검색 실패");
 
-      console.log(`[API SUCCESS] fetchSearchDocuments Data Length: ${data.data?.length}`); 
-      console.log(`[API DEBUG] Total Count from API: ${data.total_count}`); 
-
       const apiTotalCount = data.total_count;
       const documentsLength = data.data?.length || 0;
-      
-      // ✅ 해결 로직: total_count가 API에서 누락되었을 경우, 최소한 현재 받은 문서 수를 TotalCount로 설정
       const newTotalCount = apiTotalCount !== undefined ? apiTotalCount : documentsLength;
       
-      console.log(`[DEBUG] Final Total Count used: ${newTotalCount}`);
-
       setDocuments(data.data || []); 
       setTotalCount(newTotalCount); 
       setHasNext(data.has_next || false);
@@ -141,58 +120,71 @@ export default function DocumentListPage() {
     } catch (e: any) {
       setError(e.message);
       setDocuments([]);
-      console.error("[API ERROR] fetchSearchDocuments:", e);
     } finally {
       setLoading(false);
     }
-  }, [searchFileName, uploadedFrom, uploadedTo, searchBy]); // 🚨 useCallback 의존성 유지 (handleSearch에서 사용)
+  }, [searchFileName, uploadedFrom, uploadedTo, searchBy]); 
 
-  // 🚨🚨🚨 수정된 handleSearch: 검색 버튼 클릭 시 API 명시적 호출 🚨🚨🚨
+  // handleAnalyze: useCallback 적용
+  const handleAnalyze = useCallback(async (doc: DocumentMeta) => {
+    // S3_BASE_URL 환경 변수 대신 하드코딩된 URL 사용
+    const s3Url = `https://first-imhwan-bucket.s3.ap-southeast-2.amazonaws.com/${doc.s3_key}`;
+    setAnalyzingId(doc.id);
+    try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/documents-multi-agents/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                doc_id: doc.id,
+                doc_url: s3Url,
+                question: "Summarize the content",
+            }),
+            credentials: "include",
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "분석 실패");
+
+        setAnalyzeResults(prev => ({
+            ...prev,
+            [doc.id]: data,
+        }));
+    } catch (e: any) {
+        alert(`분석 실패: ${e.message}`);
+    } finally {
+        setAnalyzingId(null);
+    }
+  }, []); 
+
+
+  // handleDelete: useCallback 적용 (로직 생략)
+  const handleDelete = useCallback(async (docId: number, fileName: string) => {
+    if (window.confirm(`정말 파일 '${fileName}'(ID: ${docId})을(를) 삭제하시겠습니까?`)) {
+        // ... (삭제 로직)
+        alert(`삭제 기능 준비 중: ${fileName} 삭제 요청`);
+    }
+  }, []); 
+
+  
+  // handleSearch: 검색 버튼 클릭 시 API 명시적 호출
   const handleSearch = () => {
-    console.log("[ACTION] Search button clicked. Starting new search...");
-    
-    // 1. 페이지를 1로 리셋합니다.
     setPage(1); 
-    
-    // 2. 검색 API를 명시적으로 호출합니다.
-    // (setPage가 비동기이므로, 페이지 이동을 위한 명시적인 page: 1과 현재 size를 사용)
     fetchSearchDocuments(1, size); 
   };
 
-  // 💡💡💡 수정된 useEffect: 검색 필터 변경 시 자동 호출 방지 💡💡💡
+  // useEffect: 페이지 및 사이즈 변경 시 또는 초기 로딩 시 API 요청
   useEffect(() => {
     const hasSearchParams = searchFileName || uploadedFrom || uploadedTo;
     
     if (!hasSearchParams) {
-        // 검색 조건이 없을 때: 페이지 변경 시 무조건 전체 문서 목록 로드 (초기 로딩 및 페이지 이동)
         fetchAllDocuments(page, size); 
-    } else if (hasSearchParams && page !== 1) {
-        // 검색 조건이 있고, 페이지가 1이 아닐 때: 페이지 이동 시 검색 결과 목록 로드
-        // (page가 1일 때의 초기 검색은 handleSearch가 담당)
+    } else {
         fetchSearchDocuments(page, size);
-    } else if (hasSearchParams && page === 1 && documents.length === 0) {
-        // 검색 조건이 있지만 아직 한 번도 검색을 안 한 경우 (초기 로드 후 검색 버튼 클릭 대기)
-        // 이 부분을 비워두어 초기 검색은 handleSearch에 의존하도록 유도합니다.
-        // 하지만 초기 로드 시 documents가 비어있고 검색 조건이 있다면, fetchSearchDocuments를 호출해야 할 수도 있습니다. 
-        // 🚨 임시 해결: 페이지가 1일 때 검색 조건이 있다면, 사용자가 검색 버튼을 누르도록 대기합니다.
-        // (handleSearch가 API를 호출하므로 이 시점에서는 아무것도 하지 않습니다.)
-    } else if (page === 1 && documents.length === 0) {
-      // 컴포넌트 마운트 후 첫 페이지 로드 (검색 조건 없음)
-      fetchAllDocuments(1, size);
     }
-
-
-  // 🚨 의존성 배열에서 검색 필터 상태(searchFileName, uploadedFrom 등) 제거
-  // 오직 page와 size 변경 시에만 API 요청이 발생합니다.
   }, [page, size, fetchAllDocuments, fetchSearchDocuments]);
 
 
-  // 💡💡💡 페이지네이션을 위한 렌더링할 문서 목록 계산 💡💡💡
-  const startIndex = (page - 1) * size;
-  const endIndex = page * size;
-  const documentsToRender = documents.slice(startIndex, endIndex);
-
-  // 💡 페이징에 사용할 실제 TotalCount와 HasNext 값 설정
+  // 페이징 관련 계산 로직
   const isSearchActive = searchFileName || uploadedFrom || uploadedTo;
   
   const effectiveTotalCount = isSearchActive 
@@ -204,6 +196,8 @@ export default function DocumentListPage() {
       : (page * size) < documents.length;
       
   const totalPages = Math.ceil(effectiveTotalCount / size) || 1;
+  
+  const documentsToRender = documents;
 
 
   return (
@@ -213,11 +207,9 @@ export default function DocumentListPage() {
           문서 분석 시스템 📄
         </h1>
 
-        {/* 문서 업로드 버튼 생략 */}
-        {/* ---------------- 검색 필터 영역 ---------------- */}
         <div className="bg-white shadow-xl rounded-xl p-6 mb-8 border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">문서 검색 필터</h2>
-          {/* ... 필터 입력 필드 유지 ... */}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* 검색 기준 드롭다운 */}
             <div>
@@ -227,7 +219,6 @@ export default function DocumentListPage() {
                 value={searchBy}
                 onChange={(e) => {
                   setSearchBy(e.target.value as "uploaded" | "updated");
-                  // setPage(1) 제거: 검색 조건 변경 시 자동 요청 방지
                 }}
                 className="mt-1 block w-full pl-3 pr-10 py-3 text-base text-gray-900 border-gray-300 bg-gray-50 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-base rounded-md shadow-sm"
               >
@@ -235,7 +226,6 @@ export default function DocumentListPage() {
                 <option value="updated">수정일 기준</option>
               </select>
             </div>
-
             {/* 파일 이름 검색 */}
             <div>
               <label htmlFor="file-name" className="block text-sm font-medium text-gray-700 mb-1">파일 이름</label>
@@ -250,7 +240,6 @@ export default function DocumentListPage() {
                 className="mt-1 block w-full shadow-sm text-base py-3 text-gray-900 border-gray-300 bg-gray-50 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-
             {/* 날짜 범위 입력 - From */}
             <div>
               <label htmlFor="uploaded-from" className="block text-sm font-medium text-gray-700 mb-1">날짜 범위 (시작)</label>
@@ -288,7 +277,7 @@ export default function DocumentListPage() {
                 value={size}
                 onChange={(e) => {
                   setSize(Number(e.target.value));
-                  setPage(1); // 페이지 사이즈 변경은 즉시 1페이지로 이동/재검색을 유발
+                  setPage(1);
                 }}
                 className="block w-24 pl-3 pr-10 py-3 text-base text-gray-900 border-gray-300 bg-gray-50 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
               >
@@ -297,14 +286,22 @@ export default function DocumentListPage() {
                 ))}
               </select>
             </div>
-            {/* 🚨 검색 버튼 클릭 시 명시적으로 API 호출 */}
-            <button
-              onClick={handleSearch}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
-            >
-              <FaSearch className="mr-2 -ml-1 h-5 w-5" />
-              검색
-            </button>
+            <div className="flex gap-4"> 
+                <Link
+                    href="/documents/register"
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-lg text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+                >
+                    <FaUpload className="mr-2 -ml-1 h-5 w-5" />
+                    문서 업로드
+                </Link>
+                <button
+                    onClick={handleSearch}
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                >
+                    <FaSearch className="mr-2 -ml-1 h-5 w-5" />
+                    검색 실행
+                </button>
+            </div>
           </div>
         </div>
 
@@ -320,7 +317,7 @@ export default function DocumentListPage() {
           </p>
         )}
 
-        {/* 🚨🚨🚨 검색 결과 없음 문구 조건 (최종 강화된 로직) 🚨🚨🚨 */}
+        {/* 검색 결과 없음 문구 */}
         { 
           !loading && 
           !error && 
@@ -330,13 +327,14 @@ export default function DocumentListPage() {
           )
         }
 
-        {/* 🌟🌟🌟 문서 목록 렌더링: documentsToRender 사용 🌟🌟🌟 */}
+        {/* 문서 목록 렌더링 */}
+        {/* 💡 [참고] 카드 높이 문제는 CSS Grid의 기본 동작으로, Tailwind class만으로는 해결이 어렵습니다. */}
+        {/* Grid 대신 Flex Column이나 Masonry-like 라이브러리를 사용해야 근본적으로 해결됩니다. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {documentsToRender.map((doc) => {
-            const s3Url = `${process.env.NEXT_PUBLIC_S3_BASE_URL}/${doc.s3_key}`; 
-            const result = analyzeResults[doc.id];
+            const s3Url = `https://first-imhwan-bucket.s3.ap-southeast-2.amazonaws.com/${doc.s3_key}`;
+            const result = analyzeResults[doc.id]; // 💡 분석 결과 변수 정의
             const isAnalyzing = analyzingId === doc.id;
-
             const uploadedDate = doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'N/A';
             const updatedDate = doc.updated_at ? new Date(doc.updated_at).toLocaleDateString() : 'N/A';
             
@@ -359,12 +357,45 @@ export default function DocumentListPage() {
 
                   <p className="text-xs text-gray-500 mt-3">업로더 ID: {doc.uploader_id}</p>
                   <p className="text-xs text-gray-500">등록일: {uploadedDate}</p>
-                  <p className="text-xs text-gray-500">수정일: {updatedDate}</p>
+                  <p className="text-xs text-gray-500 mb-4">수정일: {updatedDate}</p>
 
-                  {/* 분석 결과 표시 생략 */}
+                  {/* 🌟 [수정] 상세 분석 결과 섹션 전체를 <details>로 래핑 🌟 */}
+                  {result && !isAnalyzing ? (
+                    <details className="mt-4 border border-gray-300 rounded-md shadow-sm bg-indigo-50/50">
+                        <summary className="font-bold text-base text-gray-900 p-3 bg-indigo-100/50 hover:bg-indigo-100 cursor-pointer transition-colors duration-200 flex justify-between items-center">
+                            <span>✅ 분석 결과 요약 보기</span>
+                            <span className="text-sm font-normal text-indigo-700">클릭하여 펼치기/접기</span>
+                        </summary>
+                        
+                        <div className="p-3 text-gray-800">
+                            <h4 className="font-bold text-base text-gray-900 mb-2 border-b pb-1">상세 분석 내용</h4>
+                            
+                            <details className="text-sm cursor-pointer text-gray-700 mb-2">
+                                <summary className="font-semibold text-indigo-700 hover:text-indigo-900">파싱된 원문 보기 (Parsed Text)</summary>
+                                {/* 💡 주의: parsed_text에 깨진 문자가 있다면 백엔드 파싱 문제이므로 수정 필요 */}
+                                <pre className="whitespace-pre-wrap text-xs bg-white p-2 border rounded mt-2 max-h-40 overflow-auto">{result.parsed_text}</pre>
+                            </details>
+                            
+                            <h5 className="font-semibold mt-3 mb-1 text-gray-900 text-sm">요약 유형별 결과</h5>
+                            <ul className="list-disc list-inside text-sm space-y-1">
+                                <li><strong>Bullet:</strong> <span className="text-gray-600">{result.summaries.bullet}</span></li>
+                                <li><strong>Abstract:</strong> <span className="text-gray-600">{result.summaries.abstract}</span></li>
+                                <li><strong>Casual:</strong> <span className="text-gray-600">{result.summaries.casual}</span></li>
+                                <li><strong>Final:</strong> <span className="text-gray-600">{result.summaries.final}</span></li>
+                            </ul>
+                            
+                            <h5 className="font-semibold mt-3 mb-1 text-gray-900 text-sm">질문 답변 (Answer)</h5>
+                            <p className="text-sm bg-white p-2 border rounded">{result.answer}</p>
+                        </div>
+                    </details>
+                  ) : (
+                    // 분석 결과가 없으면 아무것도 렌더링하지 않아 공간이 늘어나지 않습니다.
+                    null 
+                  )}
+                  
                 </div>
                 
-                {/* 액션 버튼들 생략 */}
+                {/* 액션 버튼들 */}
                   <div className="p-5 bg-gray-50 border-t border-gray-200 flex justify-center gap-3">                  
                     <button
                     onClick={() => handleAnalyze(doc)}
@@ -397,28 +428,30 @@ export default function DocumentListPage() {
             );
           })}
         </div>
+        
+        <hr className="my-10 border-t border-gray-300"/>
 
         {/* ---------------- 페이지네이션 ---------------- */}
         {effectiveTotalCount > 0 && (
-          <div className="flex justify-center items-center mt-10 space-x-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1 || loading}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              이전 페이지
-            </button>
-            <span className="text-lg font-medium text-gray-800">
-              {page} / {totalPages} 페이지
-            </span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!effectiveHasNext || loading}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              다음 페이지
-            </button>
-          </div>
+            <div className="flex justify-center items-center mt-10 space-x-4">
+                <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1 || loading}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                    이전 페이지
+                </button>
+                <span className="text-lg font-medium text-gray-800">
+                    {page} / {totalPages} 페이지
+                </span>
+                <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!effectiveHasNext || loading}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                    다음 페이지
+                </button>
+            </div>
         )}
       </div>
     </div>
