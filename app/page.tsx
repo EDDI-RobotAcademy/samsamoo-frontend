@@ -112,6 +112,21 @@ export default function Home() {
                             둘러보기
                         </Link>
                     </div>
+
+                    {/* FAQ System */}
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        <h2 className="text-2xl font-bold mb-3">❓ 자주 묻는 질문 (FAQ)</h2>
+                        <p className="text-gray-600 mb-4">
+                            서비스 이용에 대한 궁금증을 해결하고 답변을 확인할 수 있습니다.
+                        </p>
+                        {/* FAQ는 로그인 여부와 관계없이 접근 가능하도록 설정 */}
+                        <Link
+                            href="/faq/list"
+                            className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                        >
+                            바로가기
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Login Prompt for Unauthenticated Users */}
