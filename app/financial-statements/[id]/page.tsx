@@ -45,8 +45,7 @@ export default function FinancialStatementDetail() {
             if (data.status === "analysis_complete") {
                 loadReport();
             }
-        } catch (err) {
-            console.error("Error loading statement:", err);
+        } catch {
             setError("재무제표를 불러올 수 없습니다.");
         } finally {
             setLoading(false);
@@ -63,8 +62,8 @@ export default function FinancialStatementDetail() {
                 const data = await res.json();
                 setRatios(data.ratios || []);
             }
-        } catch (err) {
-            console.error("Error loading ratios:", err);
+        } catch {
+            // Silently handle ratio loading errors
         }
     };
 
@@ -78,8 +77,8 @@ export default function FinancialStatementDetail() {
                 const data = await res.json();
                 setReport(data.report || null);
             }
-        } catch (err) {
-            console.error("Error loading report:", err);
+        } catch {
+            // Silently handle report loading errors
         }
     };
 
@@ -105,33 +104,35 @@ export default function FinancialStatementDetail() {
 
             alert("분석이 완료되었습니다!");
             loadStatement(); // Reload to get updated status
-        } catch (err: any) {
-            console.error("Analysis error:", err);
-            setError(err.message || "분석 중 오류가 발생했습니다.");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "분석 중 오류가 발생했습니다.";
+            setError(message);
         } finally {
             setAnalyzing(false);
         }
     };
 
-    const handleDownloadReport = async () => {
+    const handleDownloadReport = async (format: "pdf" | "md" = "pdf") => {
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}/report/download`,
-                { credentials: "include" }
-            );
+            const endpoint = format === "md"
+                ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}/report/download/md`
+                : `${process.env.NEXT_PUBLIC_API_BASE_URL}/financial-statements/${statementId}/report/download`;
+
+            const res = await fetch(endpoint, { credentials: "include" });
             if (!res.ok) throw new Error("다운로드 실패");
 
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `financial_report_${statementId}.pdf`;
+            a.download = format === "md"
+                ? `financial_report_${statementId}.md`
+                : `financial_report_${statementId}.pdf`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-        } catch (err) {
-            console.error("Download error:", err);
+        } catch {
             alert("다운로드 중 오류가 발생했습니다.");
         }
     };
@@ -151,8 +152,7 @@ export default function FinancialStatementDetail() {
 
             alert("재무제표가 삭제되었습니다.");
             router.push("/financial-statements/list");
-        } catch (err) {
-            console.error("Delete error:", err);
+        } catch {
             alert("삭제 중 오류가 발생했습니다.");
         }
     };
@@ -252,12 +252,20 @@ export default function FinancialStatementDetail() {
                     </button>
                 )}
                 {statement.status === "analysis_complete" && (
-                    <button
-                        onClick={handleDownloadReport}
-                        className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                    >
-                        PDF 리포트 다운로드
-                    </button>
+                    <>
+                        <button
+                            onClick={() => handleDownloadReport("md")}
+                            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                        >
+                            📄 Markdown 리포트 다운로드
+                        </button>
+                        <button
+                            onClick={() => handleDownloadReport("pdf")}
+                            className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                        >
+                            📑 PDF 리포트 다운로드
+                        </button>
+                    </>
                 )}
                 <button
                     onClick={handleDelete}

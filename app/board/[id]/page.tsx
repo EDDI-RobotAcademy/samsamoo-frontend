@@ -31,8 +31,9 @@ export default function BoardDetailClient() {
                 if (!res.ok) throw new Error(`Error ${res.status}`);
                 const data = await res.json();
                 setBoard(data);
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Error occurred";
+                setError(message);
             } finally {
                 setLoading(false);
             }
@@ -53,9 +54,9 @@ export default function BoardDetailClient() {
                 throw new Error(errData.error || `Delete failed: ${res.status}`);
             }
             router.push("/board/list");
-        } catch (err: any) {
-            console.error(err);
-            alert("삭제에 실패했습니다: " + err.message);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            alert("삭제에 실패했습니다: " + message);
         }
     };
 

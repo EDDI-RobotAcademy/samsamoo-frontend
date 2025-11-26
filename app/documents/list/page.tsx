@@ -39,6 +39,11 @@ interface DocumentSearchResponse {
 // 환경 변수가 없을 경우에 대비해 S3 URL을 임시로 하드코딩된 값으로 대체 (실제 환경에서는 NEXT_PUBLIC_S3_BASE_URL 사용 권장)
 const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL || "https://s3-eddi-pjs-bucket.s3.ap-northeast-2.amazonaws.com";
 
+const getS3Url = (s3Key: string) => {
+  const bucket = process.env.NEXT_PUBLIC_AWS_S3_BUCKET || "s3-jaeyeong-lsh-bucket";
+  const region = process.env.NEXT_PUBLIC_AWS_REGION || "ap-northeast-2";
+  return `https://${bucket}.s3.${region}.amazonaws.com/${s3Key}`;
+};
 
 export default function DocumentListPage() {
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
@@ -305,7 +310,7 @@ export default function DocumentListPage() {
           </div>
         </div>
 
-        {/* 로딩 및 에러 메시지 */}
+        {/* 로딩/에러 */}
         {loading && (
           <p className="text-center text-indigo-700 text-lg flex items-center justify-center py-8">
             <FaSpinner className="animate-spin mr-3 h-5 w-5" /> 데이터 불러오는 중...
@@ -317,15 +322,10 @@ export default function DocumentListPage() {
           </p>
         )}
 
-        {/* 검색 결과 없음 문구 */}
-        { 
-          !loading && 
-          !error && 
-          effectiveTotalCount === 0 && 
-          (isSearchActive || documents.length === 0) && ( 
-            <p className="text-center text-gray-600 text-lg py-8">검색 결과가 없습니다. 조건을 변경해 보세요!</p>
-          )
-        }
+        {/* 결과 없음 */}
+        {!loading && !error && effectiveTotalCount === 0 && (isSearchActive || documents.length === 0) && (
+          <p className="text-center text-gray-600 text-lg py-8">검색 결과가 없습니다. 조건을 변경해 보세요!</p>
+        )}
 
         {/* 문서 목록 렌더링 */}
         {/* 💡 [참고] 카드 높이 문제는 CSS Grid의 기본 동작으로, Tailwind class만으로는 해결이 어렵습니다. */}

@@ -16,15 +16,12 @@ export default function AnonymousBoardList() {
                 { credentials: "include" }
             );
             if (!res.ok) {
-                console.error("Failed to fetch anonymous boards", res.status);
                 setBoards([]);
                 return;
             }
             const data = await res.json();
-            console.log("Fetched anonymous boards:", data);
             setBoards(data.boards || data);
-        } catch (err) {
-            console.error("Error loading anonymous boards:", err);
+        } catch {
             setBoards([]);
         } finally {
             setLoading(false);
@@ -52,8 +49,7 @@ export default function AnonymousBoardList() {
             }
             alert("게시글이 삭제되었습니다.");
             loadBoards();
-        } catch (err) {
-            console.error("Delete error:", err);
+        } catch {
             alert("삭제 중 오류가 발생했습니다.");
         }
     };

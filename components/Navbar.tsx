@@ -32,6 +32,7 @@ export default function Navbar() {
                         <Link href="/board/me">내 게시글</Link>
                         <Link href="/documents/list">문서 분석</Link>
                         <Link href="/financial-statements/list">재무제표 분석</Link>
+                        <Link href="/xbrl-analysis">XBRL 분석</Link>
                         <Link href="/faq/list">FAQ</Link>
                     </>
                 )}
