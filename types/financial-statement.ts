@@ -5,8 +5,10 @@ export interface FinancialStatement {
     statement_type: "quarterly" | "annual";
     fiscal_year: number;
     fiscal_quarter?: number;
-    pdf_s3_key?: string;
+    s3_key?: string;  // S3 key for uploaded PDF
     status: "metadata_only" | "pdf_uploaded" | "ratios_calculated" | "analysis_complete";
+    has_normalized_data: boolean;  // Whether financial data has been extracted
+    is_complete: boolean;  // Whether all required fields are populated
     created_at: string;
     updated_at: string;
 }
@@ -22,7 +24,7 @@ export interface AnalysisReport {
     id: number;
     statement_id: number;
     kpi_summary: string | null;
-    statement_table_summary: Record<string, any> | null;
+    statement_table_summary: Record<string, unknown> | null;
     ratio_analysis: string | null;
     report_s3_key: string | null;
     is_complete: boolean;

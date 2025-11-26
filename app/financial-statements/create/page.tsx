@@ -67,8 +67,7 @@ export default function CreateFinancialStatement() {
             alert("재무제표가 생성되었습니다!");
             // Redirect to upload page
             router.push(`/financial-statements/${data.id}/upload`);
-        } catch (err) {
-            console.error("Create error:", err);
+        } catch {
             alert("생성 중 오류가 발생했습니다.");
         } finally {
             setLoading(false);

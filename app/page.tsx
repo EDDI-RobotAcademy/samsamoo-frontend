@@ -81,6 +81,24 @@ export default function Home() {
                         )}
                     </div>
 
+                    {/* XBRL Analysis */}
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                        <h2 className="text-2xl font-bold mb-3">📈 XBRL 분석</h2>
+                        <p className="text-gray-600 mb-4">
+                            XBRL/iXBRL 형식의 재무제표 파일을 업로드하여 재무비율을 자동 계산합니다.
+                        </p>
+                        {isLoggedIn ? (
+                            <Link
+                                href="/xbrl-analysis"
+                                className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                            >
+                                분석하기
+                            </Link>
+                        ) : (
+                            <p className="text-sm text-gray-500">로그인이 필요합니다</p>
+                        )}
+                    </div>
+
                     {/* Anonymous Board */}
                     <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                         <h2 className="text-2xl font-bold mb-3">🔓 익명 게시판</h2>
