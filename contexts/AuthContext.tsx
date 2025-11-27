@@ -49,16 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .finally(() => {
                 setLoading(false);
             });
-            const data = await res.json();
-            setIsLoggedIn(data.logged_in);
-            setRole(data.role ?? null);
-        } catch (err) {
-            console.error("[Auth] Status check failed:", err);
-            setIsLoggedIn(false);
-            setRole(null);
-        } finally {
-            setLoading(false);
-        }
     };
 
     const logout = async () => {
@@ -72,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setRole(null);
             setEmail(null);
             setNickname(null);
-        });
+        };
     };
 
     useEffect(() => {
