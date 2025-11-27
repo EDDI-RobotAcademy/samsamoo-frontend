@@ -35,6 +35,7 @@ export default function Navbar() {
                         <Link href="/xbrl-analysis/list">XBRL 목록</Link>
                         <Link href="/xbrl-analysis">XBRL 분석</Link>
                         <Link href="/faq/list">FAQ</Link>
+                        <Link href="/notice/list">공지사항</Link>
                     </>
                 )}
 
