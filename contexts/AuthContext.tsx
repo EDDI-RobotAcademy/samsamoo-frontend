@@ -49,13 +49,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .finally(() => {
                 setLoading(false);
             });
+            const data = await res.json();
+            setIsLoggedIn(data.logged_in);
+            setRole(data.role ?? null);
+        } catch (err) {
+            console.error("[Auth] Status check failed:", err);
+            setIsLoggedIn(false);
+            setRole(null);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const logout = () => {
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/authentication/logout`, {
-            method: "POST",
-            credentials: "include",
-        }).finally(() => {
+    const logout = async () => {
+        try {
+            await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/authentication/logout`, {
+                method: "POST",
+                credentials: "include",
+            });
+        } finally {
             setIsLoggedIn(false);
             setRole(null);
             setEmail(null);

@@ -4,17 +4,27 @@
  */
 
 // Financial data extracted from XBRL
+// Field names aligned with backend xbrl_extraction_service.py
 export interface BalanceSheet {
+    // Assets
     total_assets?: number;
-    total_liabilities?: number;
-    total_equity?: number;
     current_assets?: number;
-    current_liabilities?: number;
     non_current_assets?: number;
-    non_current_liabilities?: number;
-    cash_and_equivalents?: number;
+    cash?: number;                    // Backend sends 'cash', not 'cash_and_equivalents'
+    cash_and_equivalents?: number;    // Keep for backwards compatibility
     inventory?: number;
-    receivables?: number;
+    trade_receivables?: number;       // Backend sends 'trade_receivables'
+    receivables?: number;             // Keep for backwards compatibility
+
+    // Liabilities
+    total_liabilities?: number;
+    current_liabilities?: number;
+    non_current_liabilities?: number;
+    trade_payables?: number;
+
+    // Equity
+    total_equity?: number;
+    share_capital?: number;
     retained_earnings?: number;
 }
 
@@ -23,27 +33,37 @@ export interface IncomeStatement {
     cost_of_sales?: number;
     gross_profit?: number;
     operating_income?: number;
-    net_income?: number;
     operating_expenses?: number;
     interest_expense?: number;
+    interest_income?: number;
+    income_before_tax?: number;
     income_tax_expense?: number;
-    ebitda?: number;
+    net_income?: number;
+    eps?: number;
+    ebitda?: number;                  // May be calculated
 }
 
 export interface CashFlowStatement {
     operating_cash_flow?: number;
     investing_cash_flow?: number;
     financing_cash_flow?: number;
-    net_cash_change?: number;
-    capital_expenditure?: number;
+    net_cash_flow?: number;           // Backend sends 'net_cash_flow'
+    net_cash_change?: number;         // Keep for backwards compatibility
+    capex?: number;                   // Backend sends 'capex'
+    capital_expenditure?: number;     // Keep for backwards compatibility
+    depreciation?: number;
+    amortization?: number;
+    beginning_cash?: number;
+    ending_cash?: number;
     dividends_paid?: number;
-    free_cash_flow?: number;
+    free_cash_flow?: number;          // May be calculated
 }
 
 export interface FinancialData {
     balance_sheet: BalanceSheet;
     income_statement: IncomeStatement;
-    cash_flow: CashFlowStatement;
+    cash_flow?: CashFlowStatement;              // Optional - may not always be present
+    cash_flow_statement?: CashFlowStatement;    // Backend may send this name
 }
 
 // Calculated financial ratios
@@ -80,14 +100,47 @@ export interface XBRLConcept {
     sample_value: string;
 }
 
+// Financial health assessment from LLM
+export interface FinancialHealthAssessment {
+    overall_score: number;
+    rating: string;
+    strengths: string[];
+    weaknesses: string[];
+    key_risks: string[];
+    improvement_areas: string[];
+    summary: string;
+}
+
+// Investment recommendation from LLM
+export interface InvestmentRecommendation {
+    recommendation: string;
+    confidence: string;
+    target_investor: string;
+    time_horizon: string;
+    key_positives: string[];
+    key_negatives: string[];
+    catalysts: string[];
+    summary: string;
+}
+
 // LLM Analysis result
 export interface LLMAnalysis {
+    corp_name?: string;
+    fiscal_year?: number;
+    analysis_date?: string;
     executive_summary: string;
-    financial_health: string;
+    financial_health: FinancialHealthAssessment;
     ratio_analysis: string;
-    recommendations: string;
+    investment_recommendation: InvestmentRecommendation;
+    // Keep old names for backwards compatibility
+    recommendations?: string;
     risk_assessment?: string;
     industry_comparison?: string;
+    raw_data?: {
+        financial_data: FinancialData;
+        ratios: { type: string; value: number }[];
+        benchmarks: Record<string, number>;
+    };
 }
 
 // Main analysis response

@@ -45,9 +45,8 @@ export default function FAQList() {
     const currentCategoryRef = useRef('');
     const currentQueryRef = useRef('');
 
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, role } = useAuth();
 
-    // API 로딩 함수
     const loadFaqs = useCallback(async (isSearch: boolean = false) => {
         const category = currentCategoryRef.current;
         const query = currentQueryRef.current;
@@ -99,7 +98,6 @@ export default function FAQList() {
     }, [loading, hasMore]);
 
 
-    // 검색 실행 함수
     const handleSearchSubmit = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
 
@@ -110,19 +108,17 @@ export default function FAQList() {
         loadFaqs(true);
     };
 
-    // ✅ 카테고리 변경 시 자동 검색
     const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
         setSelectedCategory(value);
 
         currentCategoryRef.current = value;
-        currentQueryRef.current = searchQuery; // 검색어 유지
+        currentQueryRef.current = searchQuery;
 
         pageRef.current = 0;
         loadFaqs(true);
     };
 
-    // ✅ 검색 조건 초기화 버튼
     const handleResetSearch = () => {
         setSelectedCategory('');
         setSearchQuery('');
@@ -135,7 +131,6 @@ export default function FAQList() {
         loadFaqs(true);
     };
 
-    // 초기 로딩
     useEffect(() => {
         if (isInitialLoadRef.current) {
             loadFaqs(true);
@@ -143,7 +138,6 @@ export default function FAQList() {
         }
     }, [loadFaqs]);
 
-    // 무한 스크롤
     useEffect(() => {
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && hasMore && !loading) {
@@ -159,26 +153,32 @@ export default function FAQList() {
         };
     }, [hasMore, loading, loadFaqs]);
 
-
     return (
         <div className="p-6 min-h-screen bg-white text-black max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6 border-b pb-2">
                 <h1 className="text-3xl font-bold">자주 묻는 질문 (FAQ)</h1>
 
-                <div className={isLoggedIn ? 'visible' : 'invisible'}>
-                    <Link
-                        href="/support/inquiry"
-                        className="bg-blue-600 px-4 py-2 rounded text-white hover:bg-blue-700 transition whitespace-nowrap text-sm"
-                    >
-                        1:1 문의하기
-                    </Link>
+                <div className="flex space-x-2">
+                    {isLoggedIn && role === "USER" && (
+                        <Link
+                            href="/inquiry/create"
+                            className="bg-blue-600 px-4 py-2 rounded text-white hover:bg-blue-700 transition whitespace-nowrap text-sm"
+                        >
+                            1:1 문의하기
+                        </Link>
+                    )}
+                    {isLoggedIn && role === "ADMIN" && (
+                        <Link
+                            href="/inquiry/admin"
+                            className="bg-green-600 px-4 py-2 rounded text-white hover:bg-green-700 transition whitespace-nowrap text-sm"
+                        >
+                            문의 리스트
+                        </Link>
+                    )}
                 </div>
             </div>
 
-            {/* 검색 영역 */}
             <form onSubmit={handleSearchSubmit} className="mb-6 p-4 border rounded-lg bg-gray-50 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
-                
-                {/* 카테고리 */}
                 <select
                     value={selectedCategory}
                     onChange={handleCategoryChange}
@@ -189,7 +189,6 @@ export default function FAQList() {
                     ))}
                 </select>
 
-                {/* 검색어 입력 */}
                 <input
                     type="text"
                     value={searchQuery}
@@ -198,7 +197,6 @@ export default function FAQList() {
                     className="p-2 border rounded flex-grow"
                 />
 
-                {/* 검색 버튼 */}
                 <button
                     type="submit"
                     className="bg-blue-600 px-4 py-2 rounded text-white hover:bg-blue-700 transition flex items-center space-x-2"
@@ -207,7 +205,6 @@ export default function FAQList() {
                     <span>검색</span>
                 </button>
 
-                {/* ✅ 검색 조건 초기화 버튼 추가 */}
                 <button
                     type="button"
                     onClick={handleResetSearch}
@@ -217,7 +214,6 @@ export default function FAQList() {
                 </button>
             </form>
 
-            {/* FAQ 리스트 표시 */}
             {faqs.length === 0 && !loading ? (
                 <p className="mt-8 text-center text-lg text-gray-500">
                     검색 결과가 없습니다.
