@@ -4,18 +4,30 @@ import { createContext, useContext, useState, ReactNode, useEffect } from "react
 
 interface AuthContextType {
     isLoggedIn: boolean;
+    role: string | null;
+    email: string | null;
+    nickname: string | null;
+    loading: boolean;
     refresh: () => void;
     logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
     isLoggedIn: false,
+    role: null,
+    email: null,
+    nickname: null,
+    loading: true,
     refresh: () => {},
     logout: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [role, setRole] = useState<string | null>(null);
+    const [email, setEmail] = useState<string | null>(null);
+    const [nickname, setNickname] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
     const refresh = () => {
         fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/authentication/status`, {
@@ -23,10 +35,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         })
             .then((res) => res.json())
             .then((data) => {
-                setIsLoggedIn(data.logged_in);
+                setIsLoggedIn(data.isLoggedIn === true);
+                setRole(data.role || null);
+                setEmail(data.email || null);
+                setNickname(data.nickname || null);
             })
             .catch(() => {
                 setIsLoggedIn(false);
+                setRole(null);
+                setEmail(null);
+                setNickname(null);
+            })
+            .finally(() => {
+                setLoading(false);
             });
     };
 
@@ -36,16 +57,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             credentials: "include",
         }).finally(() => {
             setIsLoggedIn(false);
+            setRole(null);
+            setEmail(null);
+            setNickname(null);
         });
     };
 
-    // 처음 로딩될 때 1번만 실행
     useEffect(() => {
         refresh();
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isLoggedIn, refresh, logout }}>
+        <AuthContext.Provider
+            value={{ isLoggedIn, role, email, nickname, loading, refresh, logout }}
+        >
             {children}
         </AuthContext.Provider>
     );
