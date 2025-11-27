@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import XBRLPipeline from "@/components/XBRLPipeline";
 import { XBRLRatio } from "@/types/xbrl-analysis";
+import ChartsSection from "@/components/ChartsSection";
 
 interface XBRLAnalysisDetail {
     id: number;
@@ -662,6 +663,10 @@ export default function XBRLAnalysisDetail() {
                             ))}
                         </div>
                     </div>
+                )}
+
+                {analysis.status === "completed" && (
+                  <ChartsSection analysisId={analysisId} />
                 )}
 
                 {/* LLM Analysis */}
