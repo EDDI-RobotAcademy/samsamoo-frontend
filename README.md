@@ -17,8 +17,8 @@ Next.js 16 frontend for AI-powered financial statement analysis.
 npm install
 
 # Configure environment
-cp .env.example .env.local
-# Edit .env.local with your settings
+cp .env.local.example .env.local.local
+# Edit .env.local.local with your settings
 
 # Run development server
 npm run dev
