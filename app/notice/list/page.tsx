@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // ✅ 추가
 
 interface Notice {
   id: number;
@@ -10,6 +11,8 @@ interface Notice {
 }
 
 export default function NoticePage() {
+  const router = useRouter(); // ✅ 라우터 훅 사용
+
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,9 +26,8 @@ export default function NoticePage() {
           credentials: "include",
         });
         if (!res.ok) throw new Error(`Error ${res.status}`);
-
         const data = await res.json();
-        setIsAdmin(data.is_admin ?? false); // 안전하게 boolean 처리
+        setIsAdmin(String(data.role).toUpperCase() === "ADMIN");
       } catch (err: any) {
         console.error("사용자 정보 로드 실패:", err.message);
       }
@@ -41,14 +43,11 @@ export default function NoticePage() {
           credentials: "include",
         });
         if (!res.ok) throw new Error(`Error ${res.status}`);
-
         const data = await res.json();
 
-        // 서버에서 { notices: [...] } 형태로 오는 경우 처리
         const noticeList: Notice[] = Array.isArray(data)
           ? data
           : data.notices ?? [];
-
         setNotices(noticeList);
       } catch (err: any) {
         setError(err.message);
@@ -71,7 +70,7 @@ export default function NoticePage() {
       {isAdmin && (
         <button
           className="px-4 py-2 mb-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-          onClick={() => (window.location.href = "/notice/write")}
+          onClick={() => router.push("/notice/write")} // ✅ push로 변경
         >
           글 작성하기
         </button>
@@ -79,9 +78,17 @@ export default function NoticePage() {
 
       <ul className="space-y-4">
         {notices.map((notice) => (
-          <li key={notice.id} className="border p-4 rounded shadow-sm">
-            <h2 className="text-lg font-semibold">{notice.title}</h2>
-            <p className="text-gray-700 mt-1">{notice.content}</p>
+          <li
+            key={notice.id}
+            className="border p-4 rounded shadow-sm cursor-pointer hover:bg-gray-100"
+            onClick={() => router.push(`/notice/${notice.id}?admin=${isAdmin ? 1 : 0}`)}
+          >
+            <h2 className="text-lg font-semibold text-gray-100">
+              {notice.title}
+            </h2>
+            <p className="text-gray-300 mt-1 line-clamp-2">
+              {notice.content}
+            </p>
             <small className="text-gray-500 mt-2 block">
               {new Date(notice.created_at).toLocaleString()}
             </small>
@@ -89,7 +96,10 @@ export default function NoticePage() {
             {isAdmin && (
               <button
                 className="mt-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                onClick={() => handleDelete(notice.id)}
+                onClick={(e) => {
+                  e.stopPropagation(); // ✅ 클릭 이벤트 버블링 방지
+                  handleDelete(notice.id);
+                }}
               >
                 삭제
               </button>
