@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 interface Notice {
   id: number;
@@ -14,52 +13,52 @@ interface Notice {
 export default function NoticeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params?.id;
+  const searchParams = useSearchParams();
 
-  const { isLoggedIn, role, loading } = useAuth();
-  const isAdmin = role === "ADMIN";
+  const rawId = params?.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+  // ✅ 쿼리에서 넘어온 admin 플래그 (0/1)
+  const adminQuery = searchParams.get("admin");
+  const isAdminUI = adminQuery === "1";
 
   const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:33333";
+
   useEffect(() => {
     if (!id) return;
-
-    fetch(`http://localhost:33333/notice/${id}`, {
-      credentials: "include",
-    })
+    fetch(`${API}/notice/${id}`, { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("Not Found");
         return res.json();
       })
       .then((data) => setNotice(data))
       .catch((err) => setError(err.message));
-  }, [id]);
+  }, [API, id]);
 
-  if (loading) return <div>Loading...</div>;
-  if (!isLoggedIn) return <div>로그인이 필요합니다.</div>;
   if (error) return <div>Error: {error}</div>;
-  if (!notice) return <div>공지사항을 찾을 수 없습니다.</div>;
+  if (!notice) return <div>Loading...</div>;
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold">{notice.title}</h1>
-      <p className="mt-4 whitespace-pre-line">{notice.content}</p>
-
+      <p className="mt-4 whitespace-pre-wrap">{notice.content}</p>
       <small className="text-gray-500 mt-2 block">
         작성일: {new Date(notice.created_at).toLocaleString()}
       </small>
 
       <div className="flex gap-2 mt-4">
-        {isAdmin && (
+        {/* ✅ 쿼리 기준으로만 버튼 노출 */}
+        {isAdminUI && (
           <>
             <button
               className="px-3 py-1 bg-yellow-500 text-white rounded"
-              onClick={() => router.push(`/notice/${id}/edit`)}
+              onClick={() => router.push(`/notice/${id}/edit?admin=1`)}
             >
               수정
             </button>
-
             <button
               className="px-3 py-1 bg-red-500 text-white rounded"
               onClick={handleDelete}
@@ -70,7 +69,7 @@ export default function NoticeDetailPage() {
         )}
 
         <button
-          className="px-3 py-1 bg-gray-400 text-white rounded"
+          className="px-3 py-1 bg-gray-500 text-white rounded"
           onClick={() => router.push("/notice/list")}
         >
           목록으로
@@ -81,11 +80,7 @@ export default function NoticeDetailPage() {
 
   function handleDelete() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-
-    fetch(`http://localhost:33333/notice/delete/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    })
+    fetch(`${API}/notice/delete/${id}`, { method: "DELETE", credentials: "include" })
       .then((res) => {
         if (res.ok) {
           alert("삭제되었습니다.");
