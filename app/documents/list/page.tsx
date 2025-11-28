@@ -37,11 +37,11 @@ interface DocumentSearchResponse {
 
 // 환경 변수 설정
 // 환경 변수가 없을 경우에 대비해 S3 URL을 임시로 하드코딩된 값으로 대체 (실제 환경에서는 NEXT_PUBLIC_S3_BASE_URL 사용 권장)
-const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL || "https://s3-eddi-pjs-bucket.s3.ap-northeast-2.amazonaws.com";
+// const S3_BASE_URL = process.env.NEXT_PUBLIC_S3_BASE_URL || "https://s3-eddi-pjs-bucket.s3.ap-northeast-2.amazonaws.com";
 
 const getS3Url = (s3Key: string) => {
-  const bucket = process.env.NEXT_PUBLIC_AWS_S3_BUCKET || "s3-jaeyeong-lsh-bucket";
-  const region = process.env.NEXT_PUBLIC_AWS_REGION || "ap-northeast-2";
+  const bucket = process.env.AWS_S3_BUCKET || "s3-eddi-pjs-bucket";
+  const region = process.env.AWS_REGION || "ap-northeast-2";
   return `https://${bucket}.s3.${region}.amazonaws.com/${s3Key}`;
 };
 
@@ -132,8 +132,9 @@ export default function DocumentListPage() {
 
   // handleAnalyze: useCallback 적용
   const handleAnalyze = useCallback(async (doc: DocumentMeta) => {
-    // S3_BASE_URL 환경 변수 대신 하드코딩된 URL 사용
-    const s3Url = `https://first-imhwan-bucket.s3.ap-southeast-2.amazonaws.com/${doc.s3_key}`;
+       
+    const s3Url = getS3Url(doc.s3_key);
+
     setAnalyzingId(doc.id);
     try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/documents-multi-agents/analyze`, {
@@ -332,7 +333,7 @@ export default function DocumentListPage() {
         {/* Grid 대신 Flex Column이나 Masonry-like 라이브러리를 사용해야 근본적으로 해결됩니다. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {documentsToRender.map((doc) => {
-            const s3Url = `https://first-imhwan-bucket.s3.ap-southeast-2.amazonaws.com/${doc.s3_key}`;
+            const s3Url = getS3Url(doc.s3_key);
             const result = analyzeResults[doc.id]; // 💡 분석 결과 변수 정의
             const isAnalyzing = analyzingId === doc.id;
             const uploadedDate = doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'N/A';
